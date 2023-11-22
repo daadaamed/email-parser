@@ -5,17 +5,16 @@ from lxml import etree
 def parse_lacentrale_event(event):
     event = json.loads(event)
 
-    to_emails = re.findall(r'<([^>]+)>', event.get("to", ""))
-    if to_emails:
-        # Get the last email after the last '\r\n\t'
-        to_email = re.split(r'\r\n\t', event.get("to", ""))[-1].strip('<>')
-        workspace_name = re.split(r'\r\n\t', event.get("to", ""))[3].strip('<>').split('.')[0][1:]
-        workspace_id = re.split(r'\r\n\t', event.get("to", ""))[3].strip('<>').split('.')[1].split('@')[0]
-        from_email = event.get("from", "").split('<')[1].split('>')[0] if event.get("from") else ""
+    # Get the last email after the last '\r\n\t'
+    to_email = re.split(r'\r\n\t', event.get("to", ""))[-1].strip('<>')
+
+    from_email = event.get("from", "").split('<')[1].split('>')[0] 
+
+    workspace_name = re.split(r'\r\n\t', event.get("to", ""))[3].strip('<>').split('.')[0][1:]
+    workspace_id = re.split(r'\r\n\t', event.get("to", ""))[3].strip('<>').split('.')[1].split('@')[0]
     
-    # html_content = event['html']
-    root = etree.HTML(event['html'])  # Use 'html' instead of 'event'
-    td_element_marque = root.xpath('//td[contains(text(), "Marque : SEAT")]')
+    data_from_html = etree.HTML(event['html'])  
+    td_element_marque = data_from_html.xpath('//td[contains(text(), "Marque : SEAT")]')
 
     # If the element is found, extract the text content
     if td_element_marque:
@@ -24,22 +23,15 @@ def parse_lacentrale_event(event):
         marque = marque_line.split(':')[1].strip()
     else:
         marque = None
-    
-    # Extract model
-    # td_element_model = root.xpath('//td[contains(text(), "Mod\u00e8le :")]')
-    # if td_element_model:
-    #     model_line = td_element_model[0].text.strip()
-    #     model = model_line.split(':')[1].strip()
-    # else:
-    #     model = None
+    # get the subject
     subject_match = re.search(fr'{marque} (\w+ \w+)', event.get("subject", ""), re.IGNORECASE)
     model = subject_match.group(1) if subject_match else None
 
     #Extract Nom
-    td_element_nom = root.xpath('//td[contains(text(), "Nom :")]')
+    td_element_nom = data_from_html.xpath('//td[contains(text(), "Nom :")]')
     if td_element_nom:
         nom_line = td_element_nom[0].text.strip()
-        # Extract the nom value
+        # Extract the nom value to het first name and last name separated by a space
         lastname = nom_line.split(':')[1].strip().split(' ')[1]
         firstname = nom_line.split(':')[1].strip().split(' ')[2]
     
@@ -50,7 +42,7 @@ def parse_lacentrale_event(event):
 
 
     #Extract mail
-    td_element_mail = root.xpath('//td[contains(text(), "Mail :")]')
+    td_element_mail = data_from_html.xpath('//td[contains(text(), "Mail :")]')
     if td_element_mail:
         mail_line = td_element_mail[0].text.strip()
         # Extract the mail value
@@ -58,8 +50,9 @@ def parse_lacentrale_event(event):
     else:
         mail = None
 
-    # extract text
+    # extract text from the json
     json_text = event.get("text", "")
+    # decode the french text to become readable
     decoded_text = bytes(json_text, 'utf-8').decode('unicode_escape')
     parsed_html = etree.HTML(decoded_text)
     extracted_text = ' '.join(parsed_html.xpath('//text()'))
@@ -73,7 +66,7 @@ def parse_lacentrale_event(event):
         }
     ]
 
-    # display the final required information
+    # display the final informations in the required formats
 
     return {
         "channel": "lacentrale",

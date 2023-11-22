@@ -5,12 +5,11 @@ from bs4 import BeautifulSoup
 
 def parse_leboncoin_event(event):
     event = json.loads(event)
-    to_emails = re.findall(r'<([^>]+)>', event.get("to", ""))
-    if to_emails:
-        to_email = to_emails[-1]
-        workspace_name = re.split(r'\r\n\t', event.get("to", ""))[3].strip('<>').split('.')[0][1:]
-        workspace_id = re.split(r'\r\n\t', event.get("to", ""))[3].strip('<>').split('.')[1].split('@')[0]
-        from_email = event.get("from", "").split('<')[1].split('>')[0] if event.get("from") else ""
+    # extracting to_email from_email workspace_name and workspace_id
+    to_email = re.findall(r'<([^>]+)>', event.get("to", ""))[-1]
+    workspace_name = re.split(r'\r\n\t', event.get("to", ""))[3].strip('<>').split('.')[0][1:]
+    workspace_id = re.split(r'\r\n\t', event.get("to", ""))[3].strip('<>').split('.')[1].split('@')[0]
+    from_email = event.get("from", "").split('<')[1].split('>')[0] if event.get("from") else ""
 
     # Extracting firstname
     firstname_match = re.findall(r'Pr\u00e9nom : (\w+)', event.get('text', ''))
@@ -27,7 +26,6 @@ def parse_leboncoin_event(event):
     # Extract phone number
     phone_match = re.search(r'Téléphone\s*:\s*([\d\s-]+)', event.get('text', ''))
     phone_number = phone_match.group(1).split()[0] if phone_match else None
-
 
     # Extracting message from text
     message_match = re.search(r'«(.*?)»', event['text'], re.DOTALL)
